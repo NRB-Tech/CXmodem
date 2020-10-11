@@ -1,0 +1,3 @@
+[submodule "Sources/xmodem"]
+	path = Sources/xmodem
+	url = git@github.com:nrbrook/xmodem-1k.git
