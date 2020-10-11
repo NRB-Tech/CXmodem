@@ -27,10 +27,10 @@ import CXmodem
 
 ## Usage
 
-When providing a callback, CXmodem's `send` and `receive` functions are performed on a background thread:
+When providing a callback, CXmodem's `send` and `receive` functions are automatically performed on a background thread:
 
 ```swift
-CXmodem.shared.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
+CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
     serialPort.send(data: data)
 }) { (sendResult) in
     switch sendResult {
@@ -45,6 +45,8 @@ CXmodem.shared.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback
 CXmodem.shared.receivedBytesOnWire(data: receivedData)
 ```
 
+You can also optionally provide the queue to use for the `sendBytesOnWireCallback`, the final `completeCallback` and the operation queue.
+
 If you do not provide a callback the functions are blocking, so must be performed on a background thread. :
 
 ```swift
@@ -58,7 +60,7 @@ let callback = { (sendResult: CXmodem.SendResult) -> Void in
 }
 
 DispatchQueue(label: "Xmodem send", qos: .background).async {
-    let sendResult = CXmodem.shared.send(data: dataToSend, sendChunkSize: 20) { (toSendOnWire) in
+    let sendResult = CXmodem.send(data: dataToSend, sendChunkSize: 20) { (toSendOnWire) in
         serialPort.send(data: toSendOnWire)
     }
     DispatchQueue.main.async {

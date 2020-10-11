@@ -38,12 +38,9 @@ public class CXmodem {
     
     
     /// Get an instance of CXmodem local to the current thread
-    public static var threadLocal: CXmodem {
+    private static var threadLocal: CXmodem {
         return localXmodem(thread: Thread.current)
     }
-    
-    /// Get the shared instance of CXmodem
-    public static let shared = CXmodem()
     
     fileprivate init() {
         _=initCallbacks
@@ -151,10 +148,12 @@ public class CXmodem {
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
     /// - Returns: If success, `SendResult.success`, else `SendResult.fail` with the relevant `OperationError`
-    public func send(data: Data, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> SendResult {
-        startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
+    /// - Warning: Blocks the current thread
+    public class func send(data: Data, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> SendResult {
+        let cxmodem = CXmodem.threadLocal
+        cxmodem.startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
         defer {
-            endOperation()
+            cxmodem.endOperation()
         }
         let result = data.withUnsafeBytes {
             xmodemTransmit($0.bindMemory(to: UInt8.self).baseAddress, Int32($0.count))
@@ -168,30 +167,30 @@ public class CXmodem {
     ///   - data: The data to send
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
-    ///   - sendBytesOnWireQueue: The queue to perform the `sendBytesOnWireCallback` on. Default `nil` is the operation queue
-    ///   - callback: The result callback. If success, passed `SendResult.success`, else passed `SendResult.fail` with the relevant `OperationError`
+    ///   - sendBytesOnWireCallbackQueue: The queue to perform the `sendBytesOnWireCallback` on. Default `nil` is the operation queue
+    ///   - completeCallback: The result callback. If success, passed `SendResult.success`, else passed `SendResult.fail` with the relevant `OperationError`
     ///   - callbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
-    public func send(data: Data,
+    public class func send(data: Data,
               sendChunkSize: Int = 1,
               sendBytesOnWireCallback: @escaping SendBytesCallback,
-              sendBytesOnWireQueue: DispatchQueue? = nil,
-              callback: @escaping (_ result: SendResult) -> Void,
-              callbackQueue:DispatchQueue = DispatchQueue.main,
+              sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
+              completeCallback: @escaping (_ result: SendResult) -> Void,
+              completeCallbackQueue:DispatchQueue = DispatchQueue.main,
               operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> Void {
         operationQueue.async {
             let result: SendResult
-            if let wireQueue = sendBytesOnWireQueue {
-                result = self.send(data: data, sendChunkSize: sendChunkSize) { (data) in
+            if let wireQueue = sendBytesOnWireCallbackQueue {
+                result = send(data: data, sendChunkSize: sendChunkSize) { (data) in
                     wireQueue.async {
                         sendBytesOnWireCallback(data)
                     }
                 }
             } else {
-                result = self.send(data: data, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
+                result = send(data: data, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
             }
-            callbackQueue.async {
-                callback(result)
+            completeCallbackQueue.async {
+                completeCallback(result)
             }
         }
     }
@@ -209,10 +208,12 @@ public class CXmodem {
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
     /// - Returns: If success, `ReceiveResult.success` containing the received data, else `ReceiveResult.fail` with the relevant `OperationError`
-    public func receive(maxNumPackets: Int, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> ReceiveResult {
-        startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
+    /// - Warning: Blocks the current thread
+    public class func receive(maxNumPackets: Int, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> ReceiveResult {
+        let cxmodem = CXmodem.threadLocal
+        cxmodem.startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
         defer {
-            endOperation()
+            cxmodem.endOperation()
         }
         let maxLength = 128 * maxNumPackets
         var data = Data(count: maxLength);
@@ -233,12 +234,12 @@ public class CXmodem {
                 break
             }
             data.removeLast(maxLength - Int(result) + remove);
-            self.endOperation()
+            cxmodem.endOperation()
             return .success(data: data)
         } else {
-            self.endOperation()
-            self.flush()
-            self.inOperation = false
+            cxmodem.endOperation()
+            cxmodem.flush()
+            cxmodem.inOperation = false
             return .fail(error: OperationError(rawValue: Int(result))!)
         }
     }
@@ -248,30 +249,30 @@ public class CXmodem {
     ///   - maxNumPackets: The maximum number of 128 byte packets to receive
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
-    ///   - sendBytesOnWireQueue: The queue to perform the `sendBytesOnWireCallback` on. Default `nil` is the operation queue
-    ///   - callback: The result callback. If success, passed `ReceiveResult.success` containing the received data, else passed `ReceiveResult.fail` with the relevant `OperationError`
-    ///   - callbackQueue: The queue to perform the result callback on
+    ///   - sendBytesOnWireCallbackQueue: The queue to perform the `sendBytesOnWireCallback` on. Default `nil` is the operation queue
+    ///   - completeCallback: The result callback. If success, passed `ReceiveResult.success` containing the received data, else passed `ReceiveResult.fail` with the relevant `OperationError`
+    ///   - completeCallbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
-    public func receive(maxNumPackets: Int,
+    public class func receive(maxNumPackets: Int,
                  sendChunkSize: Int = 1,
                  sendBytesOnWireCallback: @escaping SendBytesCallback,
-                 sendBytesOnWireQueue: DispatchQueue? = nil,
-                 callback: @escaping (_ result: ReceiveResult) -> Void,
-                 callbackQueue:DispatchQueue = DispatchQueue.main,
+                 sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
+                 completeCallback: @escaping (_ result: ReceiveResult) -> Void,
+                 completeCallbackQueue:DispatchQueue = DispatchQueue.main,
                  operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> Void {
         operationQueue.async {
             let result: ReceiveResult
-            if let wireQueue = sendBytesOnWireQueue {
-                result = self.receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: { (data) in
+            if let wireQueue = sendBytesOnWireCallbackQueue {
+                result = receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: { (data) in
                     wireQueue.async {
                         sendBytesOnWireCallback(data)
                     }
                 })
             } else {
-                result = self.receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
+                result = receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
             }
-            callbackQueue.async {
-                callback(result)
+            completeCallbackQueue.async {
+                completeCallback(result)
             }
         }
     }
