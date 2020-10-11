@@ -65,15 +65,20 @@ public class CXmodem {
     }
 
     fileprivate func inByte(timeout: UInt16) -> Int32 {
-        let delays = timeout / 10
         var byte: UInt8? = nil
-        for _ in 0..<delays {
+        let startDate = Date()
+        let timeoutS = TimeInterval(timeout) / 1000
+        let sleepInterval = min(timeoutS, 0.01)
+        while true {
             flush()
             byte = getReceivedByte()
             if byte != nil {
                 break
             }
-            Thread.sleep(forTimeInterval: 0.01)
+            if -startDate.timeIntervalSinceNow > (timeoutS - sleepInterval) {
+                break
+            }
+            Thread.sleep(forTimeInterval: sleepInterval)
         }
         guard let b = byte else {
             return -1
