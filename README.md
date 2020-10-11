@@ -4,7 +4,7 @@ A thread-safe Swift wrapper around a modified version of George Menie's Xmodem.
 
 ## Installation using Swift package manager
 
-1. Add the project to your `Package.swift`:
+1. Add the project to your Xcode project by using File >  Swift Packages > Add package dependency and entering `https://github.com/nrbtech/CXmodem.git`, or by modifying your `Package.swift`:
 
 ```swift
 import PackageDescription
@@ -18,7 +18,7 @@ let package = Package(
 )
 ```
 
-Import the CXModem module.
+Import the CXmodem module.
 
 ```swift
 import CXmodem
