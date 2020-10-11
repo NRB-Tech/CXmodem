@@ -106,6 +106,8 @@ public class CXmodem {
         }
     }
     
+    private static var queueMap: NSMapTable<DispatchQueue, Thread> = NSMapTable.weakToWeakObjects()
+    
     private func startOperation(sendBytesOnWireCallback: @escaping SendBytesCallback, sendChunkSize: Int) {
         precondition(!inOperation)
         self.sendBytesOnWireCallback = sendBytesOnWireCallback
@@ -126,6 +128,16 @@ public class CXmodem {
     ///   - data: The data received
     public class func receivedBytesOnWire(thread: Thread, data: Data) {
         localXmodem(thread: thread).receivedBytesOnWire(data: data)
+    }
+    
+    /// Pass in data received on the wire to CXmodem for a specifc queue
+    /// - Parameters:
+    ///   - queue: The specific queue that CXmodem is running on
+    ///   - data: The data received
+    public class func receivedBytesOnWire(queue: DispatchQueue, data: Data) {
+        if let thread = queueMap.object(forKey: queue) {
+            receivedBytesOnWire(thread: thread, data: data)
+        }
     }
     
     /// Pass in data received on the wire
@@ -171,14 +183,16 @@ public class CXmodem {
     ///   - completeCallback: The result callback. If success, passed `SendResult.success`, else passed `SendResult.fail` with the relevant `OperationError`
     ///   - callbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
+    /// - Returns: The operation queue that the send is being performed on
     public class func send(data: Data,
               sendChunkSize: Int = 1,
               sendBytesOnWireCallback: @escaping SendBytesCallback,
               sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
               completeCallback: @escaping (_ result: SendResult) -> Void,
               completeCallbackQueue:DispatchQueue = DispatchQueue.main,
-              operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> Void {
+              operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> DispatchQueue {
         operationQueue.async {
+            CXmodem.queueMap.setObject(Thread.current, forKey: operationQueue)
             let result: SendResult
             if let wireQueue = sendBytesOnWireCallbackQueue {
                 result = send(data: data, sendChunkSize: sendChunkSize) { (data) in
@@ -189,10 +203,12 @@ public class CXmodem {
             } else {
                 result = send(data: data, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
             }
+            CXmodem.queueMap.removeObject(forKey: operationQueue)
             completeCallbackQueue.async {
                 completeCallback(result)
             }
         }
+        return operationQueue
     }
     
     /// The result of a receive operation
@@ -253,14 +269,16 @@ public class CXmodem {
     ///   - completeCallback: The result callback. If success, passed `ReceiveResult.success` containing the received data, else passed `ReceiveResult.fail` with the relevant `OperationError`
     ///   - completeCallbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
+    /// - Returns: The operation queue that the receive is being performed on
     public class func receive(maxNumPackets: Int,
                  sendChunkSize: Int = 1,
                  sendBytesOnWireCallback: @escaping SendBytesCallback,
                  sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
                  completeCallback: @escaping (_ result: ReceiveResult) -> Void,
                  completeCallbackQueue:DispatchQueue = DispatchQueue.main,
-                 operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> Void {
+                 operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> DispatchQueue {
         operationQueue.async {
+            CXmodem.queueMap.setObject(Thread.current, forKey: operationQueue)
             let result: ReceiveResult
             if let wireQueue = sendBytesOnWireCallbackQueue {
                 result = receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: { (data) in
@@ -271,10 +289,12 @@ public class CXmodem {
             } else {
                 result = receive(maxNumPackets: maxNumPackets, sendChunkSize: sendChunkSize, sendBytesOnWireCallback: sendBytesOnWireCallback)
             }
+            CXmodem.queueMap.removeObject(forKey: operationQueue)
             completeCallbackQueue.async {
                 completeCallback(result)
             }
         }
+        return operationQueue
     }
 }
 

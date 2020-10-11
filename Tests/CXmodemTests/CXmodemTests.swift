@@ -66,6 +66,66 @@ final class CXmodemTests: XCTestCase {
         }
     }
     
+    func testXmodemQueues() {
+        let q1,q2: DispatchQueue
+        let dataToSend = Data([0,1,2])
+        var t1Tot2 = Data()
+        var t2Tot1 = Data()
+        var result1: CXmodem.SendResult?
+        var result2: CXmodem.ReceiveResult?
+        q1 = CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSend) in
+            print("T1>T2 out \(toSend as NSData)")
+            t1Tot2.append(toSend)
+        }, completeCallback: { (result) in
+            result1 = result
+        })
+        q2 = CXmodem.receive(maxNumPackets: 1, sendBytesOnWireCallback: { (toSend) in
+            print("T2>T1 out \(toSend as NSData)")
+            t2Tot1.append(toSend)
+        }, completeCallback: { (result) in
+            result2 = result
+        })
+        let expectation = XCTestExpectation()
+        DispatchQueue.global(qos: .background).async {
+            while result1 == nil || result2 == nil {
+                if t1Tot2.count > 0 {
+                    let d = t1Tot2
+                    t1Tot2 = Data()
+                    print("T1>T2 in  \(d as NSData)")
+                    CXmodem.receivedBytesOnWire(queue: q2, data: d)
+                }
+                if t2Tot1.count > 0 {
+                    let d = t2Tot1
+                    t2Tot1 = Data()
+                    print("T2>T1 in  \(d as NSData)")
+                    CXmodem.receivedBytesOnWire(queue: q1, data: d)
+                }
+            }
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 20)
+        XCTAssertNotNil(result1)
+        XCTAssertNotNil(result2)
+        guard let r1 = result1 else {
+            return
+        }
+        switch r1 {
+        case .success:
+            break
+        case .fail(error: _):
+            XCTFail()
+        }
+        guard let r2 = result2 else {
+            return
+        }
+        switch r2 {
+        case .success(data: let d):
+            XCTAssertEqual(d, dataToSend)
+        case .fail(error: _):
+            XCTFail()
+        }
+    }
+    
     func testXmodemFailWireDead() {
         let t1: Thread
         let dataToSend = Data([0,1,2])
@@ -135,7 +195,7 @@ final class CXmodemTests: XCTestCase {
         let dataToSend = Data([0,1,2])
         var result1: CXmodem.SendResult?
         let expectation = XCTestExpectation()
-        CXmodem.send(data: dataToSend) { (toSend) in
+        _=CXmodem.send(data: dataToSend) { (toSend) in
             
         } completeCallback: { (result) in
             result1 = result
@@ -164,7 +224,7 @@ final class CXmodemTests: XCTestCase {
     func testXmodemCallbackFailReceiveWireDead() {
         var result1: CXmodem.ReceiveResult?
         let expectation = XCTestExpectation()
-        CXmodem.receive(maxNumPackets: 1) { (toSend) in
+        _=CXmodem.receive(maxNumPackets: 1) { (toSend) in
             
         } completeCallback: { (result) in
             result1 = result

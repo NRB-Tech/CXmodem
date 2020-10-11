@@ -30,7 +30,7 @@ import CXmodem
 When providing a callback, CXmodem's `send` and `receive` functions are automatically performed on a background thread:
 
 ```swift
-CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
+let operationQueue = CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
     serialPort.send(data: toSendOnWire)
 }) { (sendResult) in
     switch sendResult {
@@ -42,7 +42,7 @@ CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (to
 }
 
 // when receiving data on "wire". Does not have to be called on a specific thread
-CXmodem.shared.receivedBytesOnWire(data: receivedData)
+CXmodem.receivedBytesOnWire(queue: operationQueue, data: receivedData)
 ```
 
 You can also optionally provide the queue to use for the `sendBytesOnWireCallback`, the final `completeCallback` and the operation queue.
@@ -59,7 +59,8 @@ let callback = { (sendResult: CXmodem.SendResult) -> Void in
     }
 }
 
-DispatchQueue(label: "Xmodem send", qos: .background).async {
+let operationQueue = DispatchQueue(label: "Xmodem send", qos: .background)
+operationQueue.async {
     let sendResult = CXmodem.send(data: dataToSend, sendChunkSize: 20) { (toSendOnWire) in
         serialPort.send(data: toSendOnWire)
     }
@@ -69,5 +70,5 @@ DispatchQueue(label: "Xmodem send", qos: .background).async {
 }
 
 // when receiving data on "wire". Does not have to be called on a specific thread
-CXmodem.shared.receivedBytesOnWire(data: receivedData)
+CXmodem.receivedBytesOnWire(queue: operationQueue, data: receivedData)
 ```
