@@ -31,7 +31,7 @@ When providing a callback, CXmodem's `send` and `receive` functions are automati
 
 ```swift
 CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
-    serialPort.send(data: data)
+    serialPort.send(data: toSendOnWire)
 }) { (sendResult) in
     switch sendResult {
     case .success:
