@@ -25,10 +25,10 @@ private var initCallbacks: () = {
     xmodemOutByte = outByte
 }()
 
-class CXmodem {
+public class CXmodem {
     
     /// Errors that can occur during a send or receive operation
-    enum OperationError: Int, Error {
+    public enum OperationError: Int, Error {
             case cancelledByRemote = -1
             case noSync = -2
             case tooManyRetries = -3
@@ -38,12 +38,12 @@ class CXmodem {
     
     
     /// Get an instance of CXmodem local to the current thread
-    static var threadLocal: CXmodem {
+    public static var threadLocal: CXmodem {
         return localXmodem(thread: Thread.current)
     }
     
     /// Get the shared instance of CXmodem
-    static var shared = CXmodem()
+    public static let shared = CXmodem()
     
     fileprivate init() {
         _=initCallbacks
@@ -53,7 +53,7 @@ class CXmodem {
     private var receivedDataBuffer: Data = Data()
     private let receiveAccessQueue = DispatchQueue(label: "Receive access queue")
     
-    func getReceivedByte() -> UInt8? {
+    private func getReceivedByte() -> UInt8? {
         var byte: UInt8? = nil
         receiveAccessQueue.sync {
             guard receivedDataBuffer.count > 0 else {
@@ -95,7 +95,7 @@ class CXmodem {
         }
     }
     
-    typealias SendBytesCallback = (_ data: Data) -> Void
+    public typealias SendBytesCallback = (_ data: Data) -> Void
 
     private var sendBytesOnWireCallback: SendBytesCallback? = nil
     private var sendChunkSize: Int = 1 {
@@ -122,20 +122,20 @@ class CXmodem {
     /// - Parameters:
     ///   - thread: The specific thread that CXmodem is running on
     ///   - data: The data received
-    class func receivedBytesOnWire(thread: Thread, data: Data) {
+    public class func receivedBytesOnWire(thread: Thread, data: Data) {
         localXmodem(thread: thread).receivedBytesOnWire(data: data)
     }
     
     /// Pass in data received on the wire
     /// - Parameter data: The data received
-    func receivedBytesOnWire(data: Data) {
+    public func receivedBytesOnWire(data: Data) {
         receiveAccessQueue.async {
             self.receivedDataBuffer.append(data)
         }
     }
 
     /// The result of a send operation
-    enum SendResult {
+    public enum SendResult {
         case success
         case fail(error: OperationError)
     }
@@ -146,7 +146,7 @@ class CXmodem {
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
     /// - Returns: If success, `SendResult.success`, else `SendResult.fail` with the relevant `OperationError`
-    func send(data: Data, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> SendResult {
+    public func send(data: Data, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> SendResult {
         startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
         defer {
             endOperation()
@@ -167,7 +167,7 @@ class CXmodem {
     ///   - callback: The result callback. If success, passed `SendResult.success`, else passed `SendResult.fail` with the relevant `OperationError`
     ///   - callbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
-    func send(data: Data,
+    public func send(data: Data,
               sendChunkSize: Int = 1,
               sendBytesOnWireCallback: @escaping SendBytesCallback,
               sendBytesOnWireQueue: DispatchQueue? = nil,
@@ -192,7 +192,7 @@ class CXmodem {
     }
     
     /// The result of a receive operation
-    enum ReceiveResult {
+    public enum ReceiveResult {
         case success(data: Data)
         case fail(error: OperationError)
     }
@@ -204,7 +204,7 @@ class CXmodem {
     ///   - sendChunkSize: If provided, CXModem will chunk data sends into at most this size
     ///   - sendBytesOnWireCallback: A callback for sending bytes on the wire
     /// - Returns: If success, `ReceiveResult.success` containing the received data, else `ReceiveResult.fail` with the relevant `OperationError`
-    func receive(maxNumPackets: Int, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> ReceiveResult {
+    public func receive(maxNumPackets: Int, sendChunkSize: Int = 1, sendBytesOnWireCallback: @escaping SendBytesCallback) -> ReceiveResult {
         startOperation(sendBytesOnWireCallback: sendBytesOnWireCallback, sendChunkSize: sendChunkSize)
         defer {
             endOperation()
@@ -247,7 +247,7 @@ class CXmodem {
     ///   - callback: The result callback. If success, passed `ReceiveResult.success` containing the received data, else passed `ReceiveResult.fail` with the relevant `OperationError`
     ///   - callbackQueue: The queue to perform the result callback on
     ///   - operationQueue: The queue to perform the operation on
-    func receive(maxNumPackets: Int,
+    public func receive(maxNumPackets: Int,
                  sendChunkSize: Int = 1,
                  sendBytesOnWireCallback: @escaping SendBytesCallback,
                  sendBytesOnWireQueue: DispatchQueue? = nil,
