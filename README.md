@@ -27,7 +27,7 @@ import CXmodem
 
 ## Usage
 
-When providing a callback, CXmodem's `send` and `receive` functions are automatically performed on a background thread:
+When providing the `completeCallback` parameter, CXmodem's `send` and `receive` functions are automatically performed on a background thread:
 
 ```swift
 let operationQueue = CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytesOnWireCallback: { (toSendOnWire) in
@@ -41,7 +41,7 @@ let operationQueue = CXmodem.send(data: dataToSend, sendChunkSize: 20, sendBytes
     }
 }
 
-// when receiving data on "wire". Does not have to be called on a specific thread
+// call when receiving data on "wire". Can be called on any thread but the operation queue must be passed
 CXmodem.receivedBytesOnWire(queue: operationQueue, data: receivedData)
 ```
 
