@@ -144,6 +144,9 @@ public class CXmodem {
     /// - Parameter data: The data received
     public func receivedBytesOnWire(data: Data) {
         receiveAccessQueue.async {
+            guard self.inOperation else {
+                return
+            }
             self.receivedDataBuffer.append(data)
         }
     }
