@@ -69,6 +69,6 @@ operationQueue.async {
     }
 }
 
-// when receiving data on "wire". Does not have to be called on a specific thread
+// call when receiving data on "wire". Can be called on any thread but the operation queue must be passed
 CXmodem.receivedBytesOnWire(queue: operationQueue, data: receivedData)
 ```
