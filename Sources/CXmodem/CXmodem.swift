@@ -193,7 +193,7 @@ public class CXmodem {
               sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
               completeCallback: @escaping (_ result: SendResult) -> Void,
               completeCallbackQueue:DispatchQueue = DispatchQueue.main,
-              operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> DispatchQueue {
+              operationQueue: DispatchQueue = DispatchQueue(label: "XModem Tx", qos: .background)) -> DispatchQueue {
         operationQueue.async {
             CXmodem.queueMap.setObject(Thread.current, forKey: operationQueue)
             let result: SendResult
@@ -279,7 +279,7 @@ public class CXmodem {
                  sendBytesOnWireCallbackQueue: DispatchQueue? = nil,
                  completeCallback: @escaping (_ result: ReceiveResult) -> Void,
                  completeCallbackQueue:DispatchQueue = DispatchQueue.main,
-                 operationQueue: DispatchQueue = DispatchQueue(label: "XModem", qos: .background)) -> DispatchQueue {
+                 operationQueue: DispatchQueue = DispatchQueue(label: "XModem Rx", qos: .background)) -> DispatchQueue {
         operationQueue.async {
             CXmodem.queueMap.setObject(Thread.current, forKey: operationQueue)
             let result: ReceiveResult
