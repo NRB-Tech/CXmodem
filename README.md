@@ -18,7 +18,7 @@ let package = Package(
 )
 ```
 
-Import the CXmodem module.
+2. Import the CXmodem module.
 
 ```swift
 import CXmodem
