@@ -25,7 +25,7 @@ let package = Package(
         .target(
             name: "xmodem",
             dependencies: [],
-            exclude: ["CMakeLists.txt", "README.md"]),
+            exclude: ["CMakeLists.txt", "README.md", "tests", "cmake-build-debug", "cmake-build-release"]),
         .target(
             name: "CXmodem",
             dependencies: ["xmodem"]),
